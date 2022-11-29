@@ -35,14 +35,17 @@ impl std::fmt::Display for Polynomial {
                 continue;
             }
             let mut signed = String::new();
-            if self.coeffs[i] < 0.0 {
-                signed.push_str(&" - ");
-            } else {
-                if i != l - 1 {
+            if i == l - 1 { // leading term, don't add sign
+                signed.push_str(&self.coeffs[i].to_string());
+            } else { // not leading term, add sign and use abs
+                if self.coeffs[i] < 0.0 {
+                    signed.push_str(&" - ");
+                } else {
                     signed.push_str(&" + ");
                 }
+                signed.push_str(&self.coeffs[i].abs().to_string());
             }
-            signed.push_str(&self.coeffs[i].to_string());
+
             if i > 0 {
                 signed.push('x');
             } 
@@ -59,7 +62,7 @@ impl std::fmt::Display for Polynomial {
 
 
 fn main() {
-    let p1 = vec![0.5,1.,2.,3.];
+    let p1 = vec![-0.5,1.,-2.,-3.];
     let p = Polynomial { coeffs: p1, deg: 3};
     println!("{}", p);
 }
