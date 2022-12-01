@@ -45,6 +45,16 @@ impl Polynomial {
         self.add(&p2)
     }
 
+    fn eval(&self, x:f64) -> f64 {
+        if x == 0. {
+            self.coeffs[0]
+        } else {
+            self.coeffs.iter()
+            .enumerate()
+            .fold(0., |acc, (idx, coef)| acc + coef * (x.powi(idx as i32)))
+        }
+    }
+
 }
 
 impl std::fmt::Display for Polynomial {
@@ -100,5 +110,7 @@ fn main() {
     //let p2 = vec![0., -1., 2., 3.];
     let q1 = Polynomial {coeffs: p1};
     let q2 = Polynomial{coeffs: p2};
-    println!("{}", q1.add(&q2));
+    let q3 = q1.add(&q2);
+    println!("{}", q3);
+    println!("Evaluating at 1 is: {}", q3.eval(1.));
 }
