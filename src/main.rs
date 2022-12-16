@@ -1,18 +1,19 @@
 use itertools::{EitherOrBoth::*, Itertools};
-
+use rand::distributions::{Distribution, Uniform};
 struct Polynomial {
     coeffs: Vec<f64>
 }
 
 impl Polynomial {
+    /// Owns c
     fn new(mut c:Vec<f64>) -> Polynomial {
         // do this later.
         // if c.is_empty() {
         //     panic!("Polynomial cannot be");
         // }
 
-        // For a polynomial, if we have 0x^5, then we should remove this term, except
-        // when 0 is the constant term, which happens when c.len() == 1.        
+        // For a polynomial, if we have  a coefficient which is 0, like in 0x^5, 
+        // then we should remove this term, except when 0 is the constant term.        
         while c.len() > 1 {
             let last = *c.last().unwrap();
             if last == 0. {
@@ -21,9 +22,45 @@ impl Polynomial {
                 break
             }
         }
-
         Polynomial{coeffs: c}
     }
+
+    /// Polynomial of degree n with constant coefficient c
+    fn const_coef(c:f64, n:usize) -> Polynomial {
+        match n {
+            0 => Polynomial{coeffs: vec![0.; 1]},
+            _ => Polynomial{coeffs: vec![c; n]}
+        }
+    }
+
+    /// Creates the n basis polynomial with coefficient c.
+    /// E.g. n = 0, c = 1, returns 1 
+    /// n = 2, c = 2 returns 2x^2
+    fn basis(c:f64, n:usize) -> Polynomial {
+        match n {
+            0 => Polynomial{coeffs: vec![1.; 1]},
+            _ => {
+                let mut v = vec![0.; n-1];
+                v.push(c);
+                Polynomial{coeffs: v}
+            }
+        }
+    }
+
+    /// Randomly generate a polynomial of deg n
+    /// with uniformly distributed coefficients between lower and upper
+    fn uniform_rand(lower:f64, upper:f64, n:usize) -> Polynomial {
+        match n {
+            0 => Polynomial{coeffs: vec![0.; 1]},
+            _ => {
+                let mut rng = rand::thread_rng();
+                let u = Uniform::new(lower, upper);
+                Polynomial::new((0..n).map(|_| u.sample(&mut rng)).collect()) // Well, maybe leading coeff is 0..
+            }
+        }
+    }
+
+    // Arithmetic
 
     fn add(&self, p:&Polynomial) -> Polynomial {
         let mut new_poly:Vec<f64> = Vec::with_capacity(self.coeffs.len().max(p.coeffs.len()));
@@ -34,7 +71,7 @@ impl Polynomial {
                 Right(r) => new_poly.push(*r)
             }
         }
-        // in the minus case, it is possible that the leading term becomes 0
+        // it is possible that the leading term becomes 0 after adding/subtracting
         // so we use new to deal with that case
         Polynomial::new(new_poly)
 
@@ -45,6 +82,53 @@ impl Polynomial {
         self.add(&p2)
     }
 
+    fn multiply(&self, p:&Polynomial) -> Polynomial {
+        let mut new_poly:Vec<f64> = vec![0.; self.coeffs.len() + p.coeffs.len() - 1];
+        for (i,a) in self.coeffs.iter().enumerate() {
+            for (j,b) in p.coeffs.iter().enumerate() {
+                new_poly[i + j] += a*b;
+            }
+        }
+        Polynomial {coeffs: new_poly}
+    }
+
+    ///
+    /// Long Division by Euclidean Algorithm
+    /// 
+    fn divide_by(&self, p:&Polynomial) -> (Polynomial, Polynomial) {
+        // let mut p1 = Polynomial{coeffs:self.coeffs.clone()};
+        // let mut p2 = Polynomial{coeffs:p.coeffs.clone()};
+        // let mut diff = p1.deg() - p2.deg();
+        // while diff >= 0 {
+        //     let coef = p1.coeffs.last().unwrap() / p2.coeffs.last().unwrap();
+        //     let multiplier = Polynomial::basis(coef, diff);
+        //     let new_p = p.minus(& q.multiply(&Polynomial::basis(coef, d)));
+        //     Polynomial::long_div(new_p, q);
+        //     todo!()
+        // }
+        todo!()
+    }
+
+    fn long_div(p:Polynomial, q:&Polynomial) -> (Polynomial, Polynomial) {
+        let mut output_q = vec![0.; 1];
+        let p_deg = p.deg();
+        let q_deg = q.deg();
+        if p_deg < q_deg {
+            (Polynomial{coeffs: vec![0.;1]}, Polynomial{coeffs: q.coeffs})
+        } else { // p_deg >= q_deg
+
+            let d = p_deg - q_deg;
+            let coef = p.coeffs.last().unwrap() / q.coeffs.last().unwrap();
+            let multiplier = Polynomial::basis(coef, d);
+            let new_p = p.minus(& q.multiply(&Polynomial::basis(coef, d)));
+            Polynomial::long_div(new_p, q);
+            todo!()
+        }
+
+    }
+
+    // Utility
+
     fn eval(&self, x:f64) -> f64 {
         if x == 0. {
             self.coeffs[0]
@@ -52,6 +136,14 @@ impl Polynomial {
             self.coeffs.iter()
             .enumerate()
             .fold(0., |acc, (idx, coef)| acc + coef * (x.powi(idx as i32)))
+        }
+    }
+
+    fn deg(&self) -> usize {
+        let n = self.coeffs.len();
+        match n {
+            0|1 => 0,
+            _ => n-1 // complier knows this is > 0 and therefore always a usize!!!
         }
     }
 
@@ -113,4 +205,11 @@ fn main() {
     let q3 = q1.add(&q2);
     println!("{}", q3);
     println!("Evaluating at 1 is: {}", q3.eval(1.));
+
+    let p3 = vec![0.,1.,1.];
+    let p4 = vec![0., 2.];
+    let q3 = Polynomial{coeffs: p3};
+    let q4 = Polynomial{coeffs: p4};
+    println!("Multiply {} by {} is:\n{}", q3, q4, q3.multiply(&q4));
+
 }
