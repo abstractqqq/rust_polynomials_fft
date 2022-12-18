@@ -5,7 +5,6 @@ struct Polynomial {
 }
 
 impl Polynomial {
-    /// Owns c
     fn new(mut c:Vec<f64>) -> Polynomial {
         // do this later.
         // if c.is_empty() {
@@ -15,14 +14,33 @@ impl Polynomial {
         // For a polynomial, if we have  a coefficient which is 0, like in 0x^5, 
         // then we should remove this term, except when 0 is the constant term.        
         while c.len() > 1 {
-            let last = *c.last().unwrap();
-            if last == 0. {
+            let last = c.last().unwrap();
+            if *last == 0. {
                 c.pop();
             } else {
                 break
             }
         }
         Polynomial{coeffs: c}
+    }
+
+    // Utility
+    fn eval(&self, x:f64) -> f64 {
+        if x == 0. {
+            self.coeffs[0]
+        } else {
+            self.coeffs.iter()
+            .enumerate()
+            .fold(0., |acc, (idx, coef)| acc + coef * (x.powi(idx as i32)))
+        }
+    }
+
+    fn deg(&self) -> usize {
+        let n = self.coeffs.len();
+        match n {
+            0|1 => 0,
+            _ => n-1 // complier knows this is > 0 and therefore always a usize!!!
+        }
     }
 
     /// Polynomial of degree n with constant coefficient c
@@ -38,9 +56,9 @@ impl Polynomial {
     /// n = 2, c = 2 returns 2x^2
     fn basis(c:f64, n:usize) -> Polynomial {
         match n {
-            0 => Polynomial{coeffs: vec![1.; 1]},
+            0 => Polynomial{coeffs: vec![c; 1]},
             _ => {
-                let mut v = vec![0.; n-1];
+                let mut v = vec![0.; n];
                 v.push(c);
                 Polynomial{coeffs: v}
             }
@@ -60,8 +78,11 @@ impl Polynomial {
         }
     }
 
-    // Arithmetic
+    fn highest_coeff(&self) -> &f64 {
+        self.coeffs.last().unwrap()
+    }
 
+    // Arithmetic
     fn add(&self, p:&Polynomial) -> Polynomial {
         let mut new_poly:Vec<f64> = Vec::with_capacity(self.coeffs.len().max(p.coeffs.len()));
         for pair in self.coeffs.iter().zip_longest(p.coeffs.iter()) {
@@ -92,59 +113,42 @@ impl Polynomial {
         Polynomial {coeffs: new_poly}
     }
 
-    ///
-    /// Long Division by Euclidean Algorithm
-    /// 
+    /// Long Division
     fn divide_by(&self, p:&Polynomial) -> (Polynomial, Polynomial) {
-        // let mut p1 = Polynomial{coeffs:self.coeffs.clone()};
-        // let mut p2 = Polynomial{coeffs:p.coeffs.clone()};
-        // let mut diff = p1.deg() - p2.deg();
-        // while diff >= 0 {
-        //     let coef = p1.coeffs.last().unwrap() / p2.coeffs.last().unwrap();
-        //     let multiplier = Polynomial::basis(coef, diff);
-        //     let new_p = p.minus(& q.multiply(&Polynomial::basis(coef, d)));
-        //     Polynomial::long_div(new_p, q);
-        //     todo!()
-        // }
-        todo!()
-    }
-
-    fn long_div(p:Polynomial, q:&Polynomial) -> (Polynomial, Polynomial) {
-        let mut output_q = vec![0.; 1];
-        let p_deg = p.deg();
-        let q_deg = q.deg();
-        if p_deg < q_deg {
-            (Polynomial{coeffs: vec![0.;1]}, Polynomial{coeffs: q.coeffs})
-        } else { // p_deg >= q_deg
-
-            let d = p_deg - q_deg;
-            let coef = p.coeffs.last().unwrap() / q.coeffs.last().unwrap();
-            let multiplier = Polynomial::basis(coef, d);
-            let new_p = p.minus(& q.multiply(&Polynomial::basis(coef, d)));
-            Polynomial::long_div(new_p, q);
-            todo!()
+        // (P1, P2) = (Quotient, Remainder)
+        let dividee = Polynomial{coeffs: self.coeffs.clone()};
+        let dividee_deg = dividee.deg();
+        let divider_deg = p.deg();
+        if dividee_deg < divider_deg {
+            return (Polynomial::const_coef(0., 1), Polynomial{coeffs: p.coeffs.clone()})
         }
-
+        let mut quotient = vec![0.; dividee_deg - divider_deg + 1];
+        let remainder = Polynomial::_long_div(dividee, p, &mut quotient);
+        (Polynomial::new(quotient), remainder)
     }
 
-    // Utility
-
-    fn eval(&self, x:f64) -> f64 {
-        if x == 0. {
-            self.coeffs[0]
+    fn _long_div(
+        dividee:Polynomial
+        , divider:&Polynomial
+        , quotient:&mut Vec<f64>
+    ) -> Polynomial { // returns the remainder    
+        let dividee_deg = dividee.deg();
+        let divider_deg = divider.deg();
+        if dividee_deg < divider_deg {// dividee becomes remainder
+            return  dividee
         } else {
-            self.coeffs.iter()
-            .enumerate()
-            .fold(0., |acc, (idx, coef)| acc + coef * (x.powi(idx as i32)))
+            // dividee_deg >= divider_deg.
+            let new_term_deg = dividee_deg - divider_deg; // always >= 0
+            let new_term_coeff = dividee.highest_coeff() / divider.highest_coeff();
+            // modify the quotient
+            quotient[new_term_deg] = new_term_coeff;
+            // update dividee
+            let basis = Polynomial::basis(new_term_coeff, new_term_deg);
+            let new_dividee = dividee.minus(&basis.multiply(divider));
+            println!("Division steps: dividing {} by {}", new_dividee, divider);
+            Polynomial::_long_div(new_dividee, divider, quotient)
         }
-    }
 
-    fn deg(&self) -> usize {
-        let n = self.coeffs.len();
-        match n {
-            0|1 => 0,
-            _ => n-1 // complier knows this is > 0 and therefore always a usize!!!
-        }
     }
 
 }
@@ -158,16 +162,22 @@ impl std::fmt::Display for Polynomial {
         }
         let mut p = String::new();
         for (i,coef) in self.coeffs.iter().enumerate().rev() {
-            if *coef == 0.0 {
+            if *coef == 0.0 { // if we have 0 constant, then only print it when the polynomial has no higher terms.
                 if i == 0 && p.len() == 0 {
                     p.push('0');
                 }    
                 continue
             }
             let mut signed = String::new();
-            if i == l - 1 { // leading term, don't add sign
-                if *coef != 1. {
-                    signed.push_str(&coef.to_string());
+            if i == l - 1 { 
+                // leading term, no need to manually add signs
+                if self.deg() == 0 {
+                    // push everything if poly is constant
+                    signed.push_str(&coef.to_string());                   
+                } else { // poly is not constant and must have a x^k term, k > 0, don't print 1.
+                    if *coef != 1. {
+                        signed.push_str(&coef.to_string());
+                    }
                 }
             } else { // not leading term, add sign and use abs
                 if self.coeffs[i] < 0.0 {
@@ -197,19 +207,27 @@ impl std::fmt::Display for Polynomial {
 
 
 fn main() {
-    let p1 = vec![0.5,1.,-2.,-3.];
-    let p2 = vec![0.5,-1.,3.,4.];
-    //let p2 = vec![0., -1., 2., 3.];
-    let q1 = Polynomial {coeffs: p1};
-    let q2 = Polynomial{coeffs: p2};
-    let q3 = q1.add(&q2);
-    println!("{}", q3);
-    println!("Evaluating at 1 is: {}", q3.eval(1.));
+    // let p1 = vec![0.5,1.,-2.,-3.];
+    // let p2 = vec![0.5,-1.,3.,4.];
+    // //let p2 = vec![0., -1., 2., 3.];
+    // let q1 = Polynomial {coeffs: p1};
+    // let q2 = Polynomial{coeffs: p2};
+    // let q3 = q1.add(&q2);
+    // println!("{}", q3);
+    // println!("Evaluating at 1 is: {}", q3.eval(1.));
 
-    let p3 = vec![0.,1.,1.];
-    let p4 = vec![0., 2.];
-    let q3 = Polynomial{coeffs: p3};
-    let q4 = Polynomial{coeffs: p4};
-    println!("Multiply {} by {} is:\n{}", q3, q4, q3.multiply(&q4));
+    // let p3 = vec![0.,1.,1.];
+    // let p4 = vec![0., 2.];
+    // let q3 = Polynomial{coeffs: p3};
+    // let q4 = Polynomial{coeffs: p4};
+    // println!("Multiply {} by {} is:\n{}", q3, q4, q3.multiply(&q4));
+
+    // 1 + x + x^5 + 2x^6
+    let p1 = Polynomial::new(vec![1., 1., 0., 0., 0., 1., 2.]);
+    // 1 + x^2
+    let p2 = Polynomial::new(vec![1., 0., 1.]);
+    let (quotient, remainder) = p1.divide_by(&p2);
+
+    println!("The quotient is {}. \nThe remainder is {}.", quotient, remainder);
 
 }
