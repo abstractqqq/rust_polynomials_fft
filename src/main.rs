@@ -154,7 +154,10 @@ impl Polynomial {
     // raise a polynomial p to a deg.
     fn to_power(&self, n:usize) -> Polynomial {
         match n {
-            0 => Polynomial { coeffs: vec![1.;1] },
+            0 => {
+                    println!("Raising a polynomial to the 0th power always returns the polynomial 1. This may not be the mathematical convention, nor the definition you choose to use.");
+                    Polynomial { coeffs: vec![1.;1] }
+                },
             _ => {
                 let cur = Polynomial {coeffs : self.coeffs.clone()};
                 Self::_power(cur, n)
