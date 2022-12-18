@@ -146,9 +146,34 @@ impl Polynomial {
             let basis = Polynomial::basis(new_term_coeff, new_term_deg);
             let new_dividee = dividee.minus(&basis.multiply(divider));
             println!("Division steps: dividing {} by {}", new_dividee, divider);
-            Polynomial::_long_div(new_dividee, divider, quotient)
+            Self::_long_div(new_dividee, divider, quotient)
         }
 
+    }
+
+    // raise a polynomial p to a deg.
+    fn to_power(&self, n:usize) -> Polynomial {
+        match n {
+            0 => Polynomial { coeffs: vec![1.;1] },
+            _ => {
+                let cur = Polynomial {coeffs : self.coeffs.clone()};
+                Self::_power(cur, n)
+            }
+        }
+    }
+
+    fn _power(current:Polynomial, deg:usize) -> Polynomial {
+        match deg {
+            0|1 => current,
+            _ => {
+                let squared = current.multiply(&current);
+                if deg % 2 == 1 {
+                    Self::_power(squared, (deg-1) >> 1).multiply(&current)
+                } else {
+                    Self::_power(squared, deg >> 1)
+                }
+            }
+        }
     }
 
 }
@@ -222,12 +247,26 @@ fn main() {
     // let q4 = Polynomial{coeffs: p4};
     // println!("Multiply {} by {} is:\n{}", q3, q4, q3.multiply(&q4));
 
-    // 1 + x + x^5 + 2x^6
-    let p1 = Polynomial::new(vec![1., 1., 0., 0., 0., 1., 2.]);
-    // 1 + x^2
-    let p2 = Polynomial::new(vec![1., 0., 1.]);
-    let (quotient, remainder) = p1.divide_by(&p2);
+    // // 1 + x + x^5 + 2x^6
+    // let p1 = Polynomial::new(vec![1., 1., 0., 0., 0., 1., 2.]);
+    // // 1 + x^2
+    // let p2 = Polynomial::new(vec![1., 0., 1.]);
+    // let (quotient, remainder) = p1.divide_by(&p2);
 
-    println!("The quotient is {}. \nThe remainder is {}.", quotient, remainder);
+    // println!("The quotient is {}. \nThe remainder is {}.", quotient, remainder);
+
+
+    // let p1 = Polynomial::new(vec![-1., 0., 0., 0., 0., 0., 0., 1.]);
+    // let p2 = Polynomial::new(vec![-1., 1.]);
+    // let (quotient, remainder) = p1.divide_by(&p2);
+
+    // println!("The quotient is {}. \nThe remainder is {}.", quotient, remainder);
+
+
+    let p1 = Polynomial::new(vec![-1., 1.]);
+    let n = 7;
+    let p1_power = p1.to_power(n);
+
+    println!("Raising ({}) to the {}th power yields\n{}.", p1, n, p1_power);
 
 }
