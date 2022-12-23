@@ -7,4 +7,5 @@ edition = "2021"
 
 [dependencies]
 itertools = "0.10.5"
-rand = "0.8.5"
+num-traits = "0.2.15"
+num-complex = "0.4.2"

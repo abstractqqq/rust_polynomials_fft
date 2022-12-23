@@ -1,9 +1,12 @@
-# Polynomials 
+# Polynomials
 
-1. A vec representation of polynomials over real numbers. Obviously not the most general, as polynomials can be defined over any arbitrary rings. Obviously not the most space efficient, as a lot of space is wasted for polynomials like x^5, which is internally represented as vec![0,0,0,0,1].
-2. Add, subtract, multiply, divide (long division)
-3. It is built for fun, and eventually I will build a fft for multiplication for polynomials. 
-4. I do not aim for the utmost speed, as this is more of a learning project.
+1. Polynomials<T>, polynomials over T, where T satisfies the Num trait.
+
+3. Implemented Add, subtract, multiply, divide (long division) for polynomials. (Tested for T=f64)
+
+4. It is built for fun, and eventually I will build a fft for multiplication for polynomials. 
+
+5. I do not aim for the utmost speed, as this is more of a learning project.
 
 
 ## Learning Rust
