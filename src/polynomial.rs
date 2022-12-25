@@ -1,22 +1,26 @@
 use itertools::{EitherOrBoth::*, Itertools};
+use ndarray::{Array1, ArrayView1};
 use num_traits::Num;
 
 #[derive(Debug)]
 pub struct Polynomial<T> 
 where T: Num + Clone + Copy
 {
-    coeffs: Vec<T>
+    coeffs: Array1<T>
 }
 
 impl <T> Polynomial<T> 
     where T: Num + Clone + Copy
 {
-    pub fn new(mut c:Vec<T>) -> Polynomial<T> {
-        // do this later.
-        // if c.is_empty() {
-        //     panic!("Polynomial cannot be");
-        // }
+    pub fn new(c: Array1<T>) -> Polynomial<T> {
+        Polynomial {coeffs: c}
+    }
 
+    pub fn from_vec(c: Vec<T>) -> Polynomial<T> {
+        Polynomial {coeffs: Array1::from_vec(c)}
+    }
+
+    pub fn no_leading_zeros(mut c:Vec<T>) -> Polynomial<T> {
         // For a polynomial, if we have  a coefficient which is 0, like in 0x^5, 
         // then we should remove this term, except when 0 is the constant term.        
         while c.len() > 1 {
@@ -27,7 +31,11 @@ impl <T> Polynomial<T>
                 break
             }
         }
-        Polynomial{coeffs: c}
+        Polynomial{coeffs: Array1::from_vec(c)}
+    }
+
+    pub fn copy(&self) -> Polynomial<T> {
+        Polynomial{coeffs: self.coeffs.clone()}
     }
 
     // Utility
@@ -57,11 +65,27 @@ impl <T> Polynomial<T>
         }
     }
 
+    pub fn len(&self) -> usize {
+        self.coeffs.len()
+    }
+
+    pub fn get_coeffs(&self) -> Array1<T> {
+        self.coeffs.clone()
+    }
+
+    pub fn get_coeffs_view(&self) -> ArrayView1<T> {
+        self.coeffs.view()
+    }
+
+    pub fn get_const(&self) -> &T {
+        self.coeffs.get(0).unwrap()
+    }
+
     /// Polynomial of degree n with constant coefficient c
     pub fn const_coef(c:T, n:usize) -> Polynomial<T> {
         match n {
-            0 => Polynomial{coeffs: vec![T::zero(); 1]},
-            _ => Polynomial{coeffs: vec![c; n]}
+            0 => Polynomial{coeffs: Array1::from_elem(1, T::zero())},
+            _ => Polynomial{coeffs: Array1::from_elem(n, c)}
         }
     }
 
@@ -70,11 +94,11 @@ impl <T> Polynomial<T>
     /// n = 2, c = 2 returns 2x^2
     pub fn basis(c:T, n:usize) -> Polynomial<T> {
         match n {
-            0 => Polynomial{coeffs: vec![c; 1]},
+            0 => Polynomial{coeffs: Array1::from_elem(1, c)},
             _ => {
                 let mut v = vec![T::zero(); n];
                 v.push(c);
-                Polynomial{coeffs: v}
+                Polynomial{coeffs: Array1::from_vec(v)}
             }
         }
     }
@@ -95,7 +119,7 @@ impl <T> Polynomial<T>
         }
         // it is possible that the leading term becomes 0 after adding/subtracting
         // so we use new to deal with that case
-        Polynomial::new(new_poly)
+        Polynomial::no_leading_zeros(new_poly)
 
     }
 
@@ -108,16 +132,17 @@ impl <T> Polynomial<T>
         let mut new_poly:Vec<T> = vec![T::zero(); self.coeffs.len() + p.coeffs.len() - 1];
         for (i,a) in self.coeffs.iter().enumerate() {
             for (j,b) in p.coeffs.iter().enumerate() {
-                new_poly[i + j] = new_poly[i + j] + (*a)*(*b);
+                let k = i + j;
+                new_poly[k] = new_poly[k] + (*a)*(*b);
             }
         }
-        Polynomial {coeffs: new_poly}
+        Polynomial {coeffs: Array1::from_vec(new_poly)}
     }
 
     /// Long Division
     pub fn divide_by(&self, p:&Polynomial<T>) -> (Polynomial<T>, Polynomial<T>) {
         // (P1, P2) = (Quotient, Remainder)
-        let dividee = Polynomial{coeffs: self.coeffs.clone()};
+        let dividee = self.copy();
         let dividee_deg = dividee.deg();
         let divider_deg = p.deg();
         if dividee_deg < divider_deg {
@@ -125,7 +150,7 @@ impl <T> Polynomial<T>
         }
         let mut quotient = vec![T::zero(); dividee_deg - divider_deg + 1];
         let remainder = Polynomial::_long_div(dividee, p, &mut quotient);
-        (Polynomial::new(quotient), remainder)
+        (Polynomial{coeffs: Array1::from_vec(quotient)}, remainder)
     }
 
 
@@ -143,12 +168,19 @@ impl <T> Polynomial<T>
             let new_term_deg = dividee_deg - divider_deg; // always >= 0
             let new_term_coeff = dividee.highest_coeff() / divider.highest_coeff();
             // modify the quotient
-            quotient[new_term_deg] = new_term_coeff;
-            // update dividee
-            let basis = Polynomial::basis(new_term_coeff, new_term_deg);
-            let new_dividee = dividee.minus(&basis.multiply(divider));
-            // println!("Division steps: dividing {} by {}", new_dividee, divider);
-            Self::_long_div(new_dividee, divider, quotient)
+            if new_term_coeff == T::zero() || quotient[new_term_deg] != T::zero() {
+                // This means that we did not reduce degree. 
+                // This might happen when we are working with Polynomials over integers.
+                // E.g x^2 + 1 divided by 2x^2 in Z[x], or 3x^2 + 1 divided by 2x^2
+                return dividee // this is the remainder
+            } else { // first time setting coeff for this deg
+                quotient[new_term_deg] = new_term_coeff;
+                // update dividee
+                let basis = Polynomial::basis(new_term_coeff, new_term_deg);
+                let new_dividee = dividee.minus(&basis.multiply(divider));
+                // println!("Division steps: dividing {} by {}", new_dividee, divider);
+                Self::_long_div(new_dividee, divider, quotient)
+            }
         }
 
     }
@@ -158,10 +190,10 @@ impl <T> Polynomial<T>
         match n {
             0 => {
                     println!("DON'T DO THIS.");
-                    Polynomial { coeffs: vec![T::one();1] }
+                    Polynomial { coeffs: Array1::from_elem(1, T::one()) }
                 },
             _ => {
-                let cur = Polynomial{coeffs : self.coeffs.clone()};
+                let cur = self.copy();
                 Self::_power(cur, n)
             }
         }
@@ -181,6 +213,7 @@ impl <T> Polynomial<T>
         }
     }
 }
+
 
 // This is pretty print for Polynomials defined over f64. Hard to generalize this. So I will put this in comments.
 // impl std::fmt::Display for Polynomial
