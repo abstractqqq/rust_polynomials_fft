@@ -1,16 +1,18 @@
 use itertools::{EitherOrBoth::*, Itertools};
 use ndarray::{Array1, ArrayView1};
-use num_traits::Num;
+use num_traits::{Num, Zero, One};
+use std::{cmp::PartialEq, fmt::Display, ops::{Add, Sub, Mul}};
+
 
 #[derive(Debug)]
 pub struct Polynomial<T> 
-where T: Num + Clone + Copy
+where T: Num + Clone + Copy + Display
 {
     coeffs: Array1<T>
 }
 
 impl <T> Polynomial<T> 
-    where T: Num + Clone + Copy
+    where T: Num + Clone + Copy + Display
 {
     pub fn new(c: Array1<T>) -> Polynomial<T> {
         Polynomial {coeffs: c}
@@ -108,7 +110,7 @@ impl <T> Polynomial<T>
     }
 
     // Arithmetic
-    pub fn add(&self, p:&Polynomial<T>) -> Polynomial<T> {
+    pub fn plus(&self, p:&Polynomial<T>) -> Polynomial<T> {
         let mut new_poly:Vec<T> = Vec::with_capacity(self.coeffs.len().max(p.coeffs.len()));
         for pair in self.coeffs.iter().zip_longest(p.coeffs.iter()) {
             match pair {
@@ -125,7 +127,7 @@ impl <T> Polynomial<T>
 
     pub fn minus(&self, p:&Polynomial<T>) -> Polynomial<T> {
         let p2 = Polynomial{coeffs: p.coeffs.iter().map(|x| T::zero()-*x).collect()};
-        self.add(&p2)
+        self.plus(&p2)
     }
 
     pub fn multiply(&self, p:&Polynomial<T>) -> Polynomial<T> {
@@ -136,21 +138,25 @@ impl <T> Polynomial<T>
                 new_poly[k] = new_poly[k] + (*a)*(*b);
             }
         }
-        Polynomial {coeffs: Array1::from_vec(new_poly)}
+        Polynomial::no_leading_zeros(new_poly)
     }
 
     /// Long Division
-    pub fn divide_by(&self, p:&Polynomial<T>) -> (Polynomial<T>, Polynomial<T>) {
+    pub fn divide_by(&self, p:&Polynomial<T>) -> Option<(Polynomial<T>, Polynomial<T>)> {
         // (P1, P2) = (Quotient, Remainder)
+        if p.is_zero(){
+            return None
+        }
+
         let dividee = self.copy();
         let dividee_deg = dividee.deg();
         let divider_deg = p.deg();
         if dividee_deg < divider_deg {
-            return (Polynomial::const_coef(T::zero(), 1), Polynomial{coeffs: p.coeffs.clone()})
+            return Some((Polynomial::const_coef(T::zero(), 1), Polynomial{coeffs: p.coeffs.clone()}))
         }
         let mut quotient = vec![T::zero(); dividee_deg - divider_deg + 1];
         let remainder = Polynomial::_long_div(dividee, p, &mut quotient);
-        (Polynomial{coeffs: Array1::from_vec(quotient)}, remainder)
+        Some((Polynomial{coeffs: Array1::from_vec(quotient)}, remainder))
     }
 
 
@@ -182,11 +188,10 @@ impl <T> Polynomial<T>
                 Self::_long_div(new_dividee, divider, quotient)
             }
         }
-
     }
 
     // raise a polynomial p to a deg.
-    pub fn to_power(&self, n:usize) -> Polynomial<T> {
+    pub fn pow(&self, n:usize) -> Polynomial<T> {
         match n {
             0 => {
                     println!("DON'T DO THIS.");
@@ -214,58 +219,162 @@ impl <T> Polynomial<T>
     }
 }
 
+impl <T> PartialEq for Polynomial<T> 
+    where T: Num + Clone + Copy + Display
+{
+    fn eq(&self, other: &Self) -> bool {
+        self.coeffs == other.coeffs 
+    }
+
+    fn ne(&self, other: &Self) -> bool {
+        self.coeffs != other.coeffs
+     }
+}
+
+impl <T> Add for Polynomial<T> 
+    where T: Num + Clone + Copy + Display
+{
+    type Output = Self;
+    fn add(self, p:Polynomial<T>) -> Polynomial<T> {
+        self.plus(&p)
+    }
+}
+
+impl <T> Add for &Polynomial<T> 
+    where T: Num + Clone + Copy + Display
+{
+    type Output = Polynomial<T>;
+    fn add(self, p:&Polynomial<T>) -> Polynomial<T> {
+        self.plus(p)
+    }
+}
+
+
+impl <T> Sub for Polynomial<T> 
+    where T: Num + Clone + Copy + Display
+{
+    type Output = Self;
+    fn sub(self, p:Polynomial<T>) -> Polynomial<T> {
+        self.minus(&p)
+    }
+}
+
+impl <T> Sub for &Polynomial<T> 
+    where T: Num + Clone + Copy + Display
+{
+    type Output = Polynomial<T>;
+    fn sub(self, p:&Polynomial<T>) -> Polynomial<T> {
+        self.minus(&p)
+    }
+}
+
+impl <T> Mul for Polynomial<T> 
+    where T: Num + Clone + Copy + Display
+{
+    type Output = Self;
+    fn mul(self, p:Polynomial<T>) -> Polynomial<T> {
+        self.multiply(&p)
+    }
+}
+
+impl <T> Mul for &Polynomial<T> 
+    where T: Num + Clone + Copy + Display
+{
+    type Output = Polynomial<T>;
+    fn mul(self, p:&Polynomial<T>) -> Polynomial<T> {
+        self.multiply(&p)
+    }
+}
+
+impl <T> Zero for Polynomial<T> 
+    where T: Num + Clone + Copy + Display
+{
+    fn zero() -> Self {
+        Polynomial { coeffs: Array1::from_elem(1, T::zero())}
+    }
+
+    fn is_zero(&self) -> bool {
+        self.coeffs == Array1::from_elem(1, T::zero())
+    }
+}
+
+impl <T> One for Polynomial<T> 
+    where T: Num + Clone + Copy + Display
+{
+    fn one() -> Self {
+        Polynomial { coeffs: Array1::from_elem(1, T::one())}
+    }
+
+    fn is_one(&self) -> bool {
+        self.coeffs == Array1::from_elem(1, T::one())
+    }
+}
 
 // This is pretty print for Polynomials defined over f64. Hard to generalize this. So I will put this in comments.
-// impl std::fmt::Display for Polynomial
-
-// {
+impl <T> std::fmt::Display for Polynomial<T>
+    where T: Num + Clone + Copy + Display
+{
     
-//     fn fmt(&self, f:&mut std::fmt::Formatter) -> std::fmt::Result {
-//         let l = self.coeffs.len();
-//         if l == 0 {
-//             return write!(f, "Empty Polynomial. (Empty coefficients)")
-//         }
-//         let mut p = String::new();
-//         for (i,coef) in self.coeffs.iter().enumerate().rev() {
-//             if *coef == f32::default() { // if we have 0 constant, then only print it when the polynomial has no higher terms.
-//                 if i == 0 && p.len() == 0 {
-//                     p.push;
-//                 }    
-//                 continue
-//             }
-//             let mut signed = String::new();
-//             if i == l - 1 { 
-//                 // leading term, no need to manually add signs
-//                 if self.deg() == 0 {
-//                     // push everything if poly is constant
-//                     signed.push_str(&coef.to_string());                   
-//                 } else { // poly is not constant and must have a x^k term, k > 0, don't print 1.
-//                     if *coef != 1. {
-//                         signed.push_str(&coef.to_string());
-//                     }
-//                 }
-//             } else { // not leading term, add sign and use abs
-//                 if self.coeffs[i] < 0.0 {
-//                     signed.push_str(&" - ");
-//                 } else {
-//                     signed.push_str(&" + ");
-//                 }
-//                 if i == 0 || *coef != 1. {
-//                     // always push constants
-//                     // No need to push 1 in front of x
-//                     signed.push_str(&coef.abs().to_string());
-//                 }
-//             }
-//             if i > 0 {
-//                 signed.push('x');
-//             }
-//             if i > 1 {
-//                 signed.push('^');
-//                 signed.push_str(&i.to_string());
-//             }
-//             p.push_str(&signed);
-//         }
-//         write!(f, "{}", p)
-//     }
-
-// }
+    fn fmt(&self, f:&mut std::fmt::Formatter) -> std::fmt::Result {
+        let l = self.coeffs.len();
+        if l == 0 {
+            return write!(f, "Empty Polynomial. (Empty coefficients)")
+        }
+        let mut p = String::new();
+        for (i,coef) in self.coeffs.iter().enumerate().rev() {
+            if coef.is_zero() { 
+                if i == 0 && p.len() == 0 {
+                    p.push_str(&coef.to_string());
+                }    
+                continue
+            }
+            let mut term = String::new();
+            if i == l - 1 { 
+                // leading term, no need to manually add signs
+                if self.deg() == 0 {
+                    // push everything if poly is constant
+                    term.push_str(&coef.to_string());                
+                } else { // poly is not constant and must have a x^k term, k > 0, don't print 1.
+                    if !coef.is_one() {
+                        term.push_str(&coef.to_string());
+                    }
+                }
+            } else { // not leading term
+                if i == 0 { // constant term
+                    if !coef.is_zero() {
+                        term.push_str(&" + ");
+                        let coef_str = &coef.to_string();
+                        if coef_str.starts_with("-") { // ad-hoc catch of 'negative' values of T
+                            term.push('(');
+                            term.push_str(coef_str);
+                            term.push(')');
+                        } else {
+                            term.push_str(coef_str);
+                        }
+                    }
+                } else { // non leading, non constant terms
+                    term.push_str(&" + ");
+                    if !coef.is_one() {
+                        let coef_str = &coef.to_string();
+                        if coef_str.starts_with("-") { // ad-hoc catch of 'negative' values of T
+                            term.push('(');
+                            term.push_str(coef_str);
+                            term.push(')');
+                        } else {
+                            term.push_str(coef_str);
+                        }
+                    }
+                }
+            }
+            if i > 0 {
+                term.push('x');
+            }
+            if i > 1 {
+                term.push('^');
+                term.push_str(&i.to_string());
+            }
+            p.push_str(&term);
+        }
+        write!(f, "{}", p)
+    }
+}
