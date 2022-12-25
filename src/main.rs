@@ -219,6 +219,18 @@ mod test {
         assert_eq!(Polynomial::from_vec(vec![-1, 5,-10, 10, -5, 1]), p2.pow(5));
     }
 
+    #[test]
+    fn eval_1() {
+        let p2 = Polynomial::from_vec(vec![-1,0,0,0,0,0,0,1]); 
+        assert_eq!(p2.eval(0), -1);
+    }
+
+    #[test]
+    fn eval_2() {
+        let p2 = Polynomial::from_vec(vec![1,1]).pow(5); 
+        assert_eq!(p2.eval(1), 32);
+    }
+
 
 
 }

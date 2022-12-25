@@ -42,17 +42,17 @@ impl <T> Polynomial<T>
 
     // Utility
     pub fn eval(&self, x:T) -> T {
-        if x == T::zero() {
+        if x.is_zero() {
             self.coeffs[0]
         } else {
-            let mut x_pow = T::zero();
+            let mut x_pow = T::one();
             self.coeffs.iter().enumerate().fold(
                 T::zero(), |acc, (power, coef)| {
                     if power == 0 {
                         *coef
                     } else {
                         x_pow = x_pow * x;
-                        acc + *coef * x_pow 
+                        acc + *coef * x_pow
                     }
                 }
             )
@@ -152,7 +152,7 @@ impl <T> Polynomial<T>
         let dividee_deg = dividee.deg();
         let divider_deg = p.deg();
         if dividee_deg < divider_deg {
-            return Some((Polynomial::const_coef(T::zero(), 1), Polynomial{coeffs: p.coeffs.clone()}))
+            return Some((Polynomial::zero(), Polynomial{coeffs: p.coeffs.clone()}))
         }
         let mut quotient = vec![T::zero(); dividee_deg - divider_deg + 1];
         let remainder = Polynomial::_long_div(dividee, p, &mut quotient);
@@ -195,7 +195,7 @@ impl <T> Polynomial<T>
         match n {
             0 => {
                     println!("DON'T DO THIS.");
-                    Polynomial { coeffs: Array1::from_elem(1, T::one()) }
+                    Polynomial::one()
                 },
             _ => {
                 let cur = self.copy();
