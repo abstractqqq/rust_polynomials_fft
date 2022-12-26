@@ -29,9 +29,11 @@ This is my summary of things I did in this project.
 
 3. The normal multiply method on the Polynomial struct uses the O(n^2) way. FFT for multiplication follows the [Cooley–Tukey FFT algorithm.](https://en.wikipedia.org/wiki/Cooley%E2%80%93Tukey_FFT_algorithm). FFT is  implemented for Polynomial\<f64\>. It can be extended to Polynomial\<Complex64\> easily. If one wants to extend this to other more general fields, one has to define more complicated structures and define n-th roots of unity in those fields (e.g. Finite fields, etc...), which is very beyond this project.
 
-4. FFT has float point precision issues, so I rounded everything to 5 decimal places.
+5. FFT has float point precision issues, so I rounded everything to 5 decimal places. You may change the decimal places.
 
-5. It is built for fun and I am not aiming for the utmost speed, as this is more of a learning project.
+6. Formal derivative of a polynomial is implemented using same logic as the pow function. It might seem stupid to do this, but how can we properly cast usize into T? Formal derivative of a polynomial can be quite general, and T may not even be real or complex.
+
+7. It is built for fun and I am not aiming for the utmost speed, as this is more of a learning project.
 
 # Resources:
 
