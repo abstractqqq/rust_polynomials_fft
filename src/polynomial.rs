@@ -1,12 +1,15 @@
 use itertools::{EitherOrBoth::*, Itertools};
 use ndarray::{Array1, ArrayView1, s};
+use std::f64::consts::PI;
+use num_complex::*;
 use num_traits::{Num, Zero, One};
 use std::{cmp::PartialEq, fmt::Display, ops::{Add, Sub, Mul}};
 
-
+//-------------------------------------------------------------------------------------------------------------
+// Abstract Implementation of polynomials
 #[derive(Debug)]
 pub struct Polynomial<T> 
-where T: Num + Clone + Copy + Display
+    where T: Num + Clone + Copy + Display
 {
     coeffs: Array1<T>
 }
@@ -15,16 +18,22 @@ impl <T> Polynomial<T>
     where T: Num + Clone + Copy + Display
 {
     pub fn new(c: Array1<T>) -> Polynomial<T> {
-        Polynomial {coeffs: c}
+        Polynomial::no_leading_zeros(c.to_vec())
     }
 
     pub fn from_vec(c: Vec<T>) -> Polynomial<T> {
         Polynomial::no_leading_zeros(c)
     }
 
+    /// If we get something like vec![0,0,0,1,0], then we should remove this last 0.
+    /// The polynomial is vec![0,0,0,1]. We only keep 0 if the polynomial is vec![0], the zero polynomial.
+    /// This method will consume c.
+    /// 
+    /// returns a polynomial.
     pub fn no_leading_zeros(mut c:Vec<T>) -> Polynomial<T> {
-        // For a polynomial, if we have  a coefficient which is 0, like in 0x^5, 
-        // then we should remove this term, except when 0 is the constant term.        
+        if c.len() == 0 {
+            panic!("Cannot generate polynomial from empty vec.")
+        }
         while c.len() > 1 {
             let last = c.last().unwrap();
             if *last == T::zero() {
@@ -85,14 +94,18 @@ impl <T> Polynomial<T>
 
     /// Polynomial of degree n with constant coefficient c
     pub fn const_coef(c:T, n:usize) -> Polynomial<T> {
-        match n {
-            0 => Polynomial{coeffs: Array1::from_elem(1, T::zero())},
-            _ => Polynomial{coeffs: Array1::from_elem(n, c)}
+        if c == T::zero() {
+            return Polynomial::zero()
+        } else {
+            match n {
+                0 => Polynomial{coeffs: Array1::from_elem(1, T::zero())},
+                _ => Polynomial{coeffs: Array1::from_elem(n, c)}
+            }
         }
     }
 
     /// Creates the n basis polynomial with coefficient c.
-    /// E.g. n = 0, c = 1, returns 1 
+    /// E.g. n = 0, c = 1, returns 1 as a polynomial
     /// n = 2, c = 2 returns 2x^2
     pub fn basis(c:T, n:usize) -> Polynomial<T> {
         if c == T::zero() {
@@ -260,6 +273,9 @@ impl <T> Polynomial<T>
     }
 }
 
+//-------------------------------------------------------------------------------------------------------------
+// implementations for mathmatical traits
+
 impl <T> PartialEq for Polynomial<T> 
     where T: Num + Clone + Copy + Display
 {
@@ -351,7 +367,8 @@ impl <T> One for Polynomial<T>
     }
 }
 
-// This is pretty print for Polynomials defined over f64. Hard to generalize this. So I will put this in comments.
+//-------------------------------------------------------------------------------------------------------------
+// This is pretty print for Polynomials
 impl <T> std::fmt::Display for Polynomial<T>
     where T: Num + Clone + Copy + Display
 {
@@ -417,5 +434,105 @@ impl <T> std::fmt::Display for Polynomial<T>
             p.push_str(&term);
         }
         write!(f, "{}", p)
+    }
+}
+
+//-------------------------------------------------------------------------------------------------------------
+// Only for real polynomials. Can be made slightly more general. But I will stop here.
+impl Polynomial<f64> {
+
+    pub fn get_value_repr(&self) -> Array1<Complex64> {
+        Self::fft(self.coeffs.view())
+    }
+
+    fn fft(p:ArrayView1<f64>) -> Array1<Complex64> {
+        // returns the value representation of p, 
+        let n = p.len();
+        if n == 1 {
+            return Array1::from_elem(1, Complex::new(p[0], 0.))
+        }
+        let deg = 2.0 * PI / (n as f64);
+        let w_n = Complex64::new(deg.cos(), deg.sin());
+        let even = p.slice(s![..;2]);
+        let odd = p.slice(s![1..p.len();2]);
+        let y_e = Self::fft(even);
+        let y_o = Self::fft(odd);
+        let mut y = Array1::from_elem(n, Complex64::zero());
+        let mut w = Complex64::one();
+        for j in 0..(n/2) {
+            let odd_term = w * y_o[j];
+            y[j] = y_e[j] + odd_term;
+            y[j + n/2] = y_e[j] - odd_term;
+            w *= w_n;
+        }
+        return y
+    }
+    
+    fn inverse_fft(p:ArrayView1<Complex64>) -> Array1<Complex64> {
+    
+        let n = p.len();
+        if n == 1 { 
+            return Array1::from_elem(1, p[0])
+        }
+    
+        let deg = -2.0 * PI / (n as f64);
+        let w_n = Complex64::new(deg.cos(), deg.sin());
+        let even = p.slice(s![..;2]);
+        let odd = p.slice(s![1..p.len();2]);
+        let y_e = Self::inverse_fft(even);
+        let y_o = Self::inverse_fft(odd);
+        let mut y = Array1::from_elem(n, Complex64::zero());
+        let mut w = Complex64::one();
+        for j in 0..(n/2) {
+            let odd_term = w * y_o[j];
+            y[j] = y_e[j] + odd_term;
+            y[j + n/2] = y_e[j] - odd_term;
+            w *= w_n;
+        }
+        return y
+    }
+    
+    fn smallest_pow_2(n:usize) -> usize {
+        // smallest power of 2 that is >= n
+        let mut test:usize = 1;
+        while test < n {
+            test <<= 1;
+        }
+        test
+    }
+    
+    fn with_leading_zeros(&self, target_len:usize) -> Array1<f64>{
+        let q = self.get_coeffs_view();
+        let mut new_array = Array1::from_elem(target_len, 0.);
+        for i in 0..q.len() {
+            new_array[i] = q[i];
+        }
+        new_array
+    }
+    
+    /// Performs polynomial multiplication using FFT
+    /// 
+    /// self
+    /// q: &Polynomial<f64>
+    /// decimal_places: how many decimal places should the output keep? FFT has some small numerical error. 
+    /// Although it is small, it will often give 0.000000000000012312 instead of 0. 
+    /// You can decide what precision you need for your output.
+    /// 
+    /// returns: product of self and q 
+    pub fn fft_mul(&self, q:&Polynomial<f64>, decimal_places:usize) -> Polynomial<f64> {
+        if q.deg() == 0 || self.deg() == 0 {
+            return self.multiply(q)
+        }
+        // q.deg + p.deg + 1 = length of the output
+        let target_len = Self::smallest_pow_2(q.deg() + self.deg() + 1);
+        // I could potentially launch two threads to do this part
+        let new_p = self.with_leading_zeros(target_len);
+        let new_q = q.with_leading_zeros(target_len);
+        // pointwise multiplication, then apply inverse
+        let product_ptwise = Self::fft(new_p.view()) * Self::fft(new_q.view());
+        let new_coeff_array = Self::inverse_fft(product_ptwise.view())/(target_len as f64);
+        // extract real parts and return, round real parts to 5 decimals.
+        let rounding_factor = (10.).powi(decimal_places as i32);
+        Polynomial::no_leading_zeros(new_coeff_array.map(|z| ((z.re()*rounding_factor).trunc())/rounding_factor).to_vec())
     }
 }

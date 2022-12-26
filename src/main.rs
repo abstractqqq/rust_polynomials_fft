@@ -1,112 +1,20 @@
 mod polynomial;
 use polynomial::Polynomial;
 
-use std::f64::consts::PI;
-use num_traits::{Zero, One};
-use num_complex::*;
-use ndarray::{Array1, s, ArrayView1};
-
-
-fn fft(p:ArrayView1<f64>) -> Array1<Complex64> {
-
-    let n = p.len();
-    if n == 1 {
-        return Array1::from_elem(1, Complex::new(p[0], 0.))
-    }
-    let deg = 2.0 * PI / (n as f64);
-    let w_n = Complex64::new(deg.cos(), deg.sin());
-    let even = p.slice(s![..;2]);
-    let odd = p.slice(s![1..p.len();2]);
-    let y_e = fft(even);
-    let y_o = fft(odd);
-    let mut y = Array1::from_elem(n, Complex64::zero());
-    let mut w = Complex64::one();
-    for j in 0..(n/2) {
-        let odd_term = w * y_o[j];
-        y[j] = y_e[j] + odd_term;
-        y[j + n/2] = y_e[j] - odd_term;
-        w *= w_n;
-    }
-    return y
-}
-
-fn inverse_fft(p:ArrayView1<Complex64>) -> Array1<Complex64> {
-
-    let n = p.len();
-    if n == 1 { 
-        return Array1::from_elem(1, p[0])
-    }
-
-    let deg = -2.0 * PI / (n as f64);
-    let w_n = Complex64::new(deg.cos(), deg.sin());
-    let even = p.slice(s![..;2]);
-    let odd = p.slice(s![1..p.len();2]);
-    let y_e = inverse_fft(even);
-    let y_o = inverse_fft(odd);
-    let mut y = Array1::from_elem(n, Complex64::zero());
-    let mut w = Complex64::one();
-    for j in 0..(n/2) {
-        let odd_term = w * y_o[j];
-        y[j] = y_e[j] + odd_term;
-        y[j + n/2] = y_e[j] - odd_term;
-        w *= w_n;
-    }
-    return y
-}
-
-fn smallest_pow_2(n:usize) -> usize {
-    // smallest power of 2 that is >= n
-    let mut test:usize = 1;
-    while test < n {
-        test <<= 1;
-    }
-    test
-}
-
-fn add_leading_zeros(p:&Polynomial<f64>, n:usize) -> Polynomial<f64>{
-    let q = p.get_coeffs_view();
-    let mut new_array = Array1::from_elem(n, 0.);
-    for i in 0..q.len() {
-        new_array[i] = q[i];
-    }
-    Polynomial::new(new_array)
-}
-
-fn value_repr(p:Polynomial<f64>) -> Array1<Complex64> {
-    // it is assumed that the input to this function is already of len 2^n
-    fft(p.get_coeffs_view())
-}
-
-fn fft_mul(p:&Polynomial<f64>, q:&Polynomial<f64>) -> Polynomial<f64> {
-    // q.deg + p.deg + 1 = length of the output
-    let target_len = smallest_pow_2(q.deg() + p.deg() + 1);
-    // I could potentially launch two threads to do this part
-    let new_p = add_leading_zeros(p, target_len);
-    let new_q = add_leading_zeros(q, target_len);
-    // pointwise multiplication, then apply inverse
-    let product_ptwise = value_repr(new_p) * value_repr(new_q);
-    let new_coeff_array = inverse_fft(product_ptwise.view())/(target_len as f64);
-    // extract real parts and return, round real parts to 5 decimals.
-    Polynomial::no_leading_zeros(new_coeff_array.map(|z| ((z.re()*100000.).trunc())/100000.0).to_vec())
-}
-
-
-
-
 fn main() {
 
     let p1 = Polynomial::from_vec(vec![1,2,3]);
     let p2 = Polynomial::from_vec(vec![0,0,2]);
     let (quotient, remainder) = p1.divide_by(&p2).unwrap();
-    println!("Dividing {} by {},", p1, p2);
+    println!("Dividing {} by {}.", p1, p2);
     println!("The quotient is {},",quotient);
     println!("The remainder is {}.", remainder);
     println!("Hence {} = ({}) * ({}) + {}.\n\n", p1, quotient, p2, remainder);
     
     let q1 = Polynomial::from_vec(vec![-1.,1.]);
     let q2 = Polynomial::from_vec(vec![1.,1.,1.,1.,1.,1.,1.]);
-    println!("Multiplying {} by {} ...", q1, q2);
-    println!("The result is {}.\n",fft_mul(&q1, &q2));
+    println!("Multiplying {} by {}.", q1, q2);
+    println!("The result is {}.\n",q1.fft_mul(&q2, 5)); // compute product using FFT, and keep 5 decimal places.
 
     let r1 = Polynomial::from_vec(vec![1,2,3,4,5]); 
     println!("The derivative of {} is:", r1);
@@ -175,7 +83,7 @@ mod test {
     fn test_divide_2() {
         let p1 = Polynomial::from_vec(vec![-1,0,0,0,0,0,0,1]);
         let p2 = Polynomial::from_vec(vec![-1,1]);
-        assert_eq!(p1.divide_by(&p2).unwrap(), (Polynomial::from_vec(vec![1,1,1,1,1,1,1]), Polynomial::zero()));
+        assert_eq!(p1.divide_by(&p2).unwrap(), (Polynomial::from_vec(vec![1,1,1,1,1,1,1]), Polynomial::from_vec(vec![0])));
     }
 
     // long division with a nonzero remainder
@@ -198,14 +106,14 @@ mod test {
     fn test_fft_1() {
         let p1 = Polynomial::from_vec(vec![-1.,1.]);
         let p2 = Polynomial::from_vec(vec![1.,1.,1.,1.,1.,1.,1.]);
-        assert_eq!(p1.multiply(&p2), fft_mul(&p1, &p2));
+        assert_eq!(p1.multiply(&p2), p1.fft_mul(&p2, 5));
     }
 
     #[test]
     fn test_fft_2() {
         let p1 = Polynomial::from_vec(vec![-1.,1.]).pow(4);
         let p2 = Polynomial::from_vec(vec![-1.,1.]); 
-        let fft = fft_mul(&p1, &p2);
+        let fft = p1.fft_mul(&p2, 5);
         assert_eq!(p1.multiply(&p2), fft);
         assert_eq!(p2.pow(5), fft);
     }
