@@ -1,5 +1,5 @@
 use itertools::{EitherOrBoth::*, Itertools};
-use ndarray::{Array1, ArrayView1};
+use ndarray::{Array1, ArrayView1, s};
 use num_traits::{Num, Zero, One};
 use std::{cmp::PartialEq, fmt::Display, ops::{Add, Sub, Mul}};
 
@@ -19,7 +19,7 @@ impl <T> Polynomial<T>
     }
 
     pub fn from_vec(c: Vec<T>) -> Polynomial<T> {
-        Polynomial {coeffs: Array1::from_vec(c)}
+        Polynomial::no_leading_zeros(c)
     }
 
     pub fn no_leading_zeros(mut c:Vec<T>) -> Polynomial<T> {
@@ -95,14 +95,19 @@ impl <T> Polynomial<T>
     /// E.g. n = 0, c = 1, returns 1 
     /// n = 2, c = 2 returns 2x^2
     pub fn basis(c:T, n:usize) -> Polynomial<T> {
-        match n {
-            0 => Polynomial{coeffs: Array1::from_elem(1, c)},
-            _ => {
-                let mut v = vec![T::zero(); n];
-                v.push(c);
-                Polynomial{coeffs: Array1::from_vec(v)}
+        if c == T::zero() {
+            return Polynomial::zero()
+        } else {
+            match n {
+                0 => Polynomial{coeffs: Array1::from_elem(1, c)},
+                _ => {
+                    let mut v = vec![T::zero(); n];
+                    v.push(c);
+                    Polynomial{coeffs: Array1::from_vec(v)}
+                }
             }
         }
+
     }
 
     pub fn highest_coeff(&self) -> T {
@@ -188,6 +193,42 @@ impl <T> Polynomial<T>
                 Self::_long_div(new_dividee, divider, quotient)
             }
         }
+    }
+
+    // also known as formal derivative
+    pub fn ddx(&self) -> Polynomial<T> {
+        let deg = self.deg();
+        match deg {
+            0 => Polynomial::zero(),
+            _ => {
+                Polynomial{
+                    coeffs:self.coeffs.slice(s![1..=deg]).iter()
+                                .enumerate()
+                                .map(|(i, v)| Self::_fast_self_add(*v, i+1))
+                                .collect()
+                }
+            }
+        }
+    }
+
+    // add T times, e.g. _fast_self_add(1, 6) = 1 + 1 + 1 + 1 + 1 + 1 = 6
+    // This might seem dumb, but this works for general T, even when T is not real or complex numbers.
+    fn _fast_self_add(value:T, times:usize) -> T {
+        if value == T::zero() {
+            return value;
+        } else {
+            match times {
+                0|1 => value,
+                _ => {
+                    let two_sum = value + value;
+                    if times % 2 == 1 {
+                        Self::_fast_self_add(two_sum, (times-1) >> 1) + value
+                    } else {
+                        Self::_fast_self_add(two_sum, times >> 1)
+                    }
+                }
+            }
+        }   
     }
 
     // raise a polynomial p to a deg.

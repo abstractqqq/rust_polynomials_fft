@@ -106,7 +106,11 @@ fn main() {
     let q1 = Polynomial::from_vec(vec![-1.,1.]);
     let q2 = Polynomial::from_vec(vec![1.,1.,1.,1.,1.,1.,1.]);
     println!("Multiplying {} by {} ...", q1, q2);
-    println!("The result is {}.",fft_mul(&q1, &q2));
+    println!("The result is {}.\n",fft_mul(&q1, &q2));
+
+    let r1 = Polynomial::from_vec(vec![1,2,3,4,5]); 
+    println!("The derivative of {} is:", r1);
+    println!("{}", r1.ddx());
 
 }
 
@@ -215,22 +219,33 @@ mod test {
 
     #[test]
     fn pow_2() {
-        let p2 = Polynomial::from_vec(vec![-1,1]); 
-        assert_eq!(Polynomial::from_vec(vec![-1, 5,-10, 10, -5, 1]), p2.pow(5));
+        let p1 = Polynomial::from_vec(vec![-1,1]); 
+        assert_eq!(Polynomial::from_vec(vec![-1, 5,-10, 10, -5, 1]), p1.pow(5));
     }
 
     #[test]
     fn eval_1() {
-        let p2 = Polynomial::from_vec(vec![-1,0,0,0,0,0,0,1]); 
-        assert_eq!(p2.eval(0), -1);
+        let p1 = Polynomial::from_vec(vec![-1,0,0,0,0,0,0,1]); 
+        assert_eq!(p1.eval(0), -1);
     }
 
     #[test]
     fn eval_2() {
-        let p2 = Polynomial::from_vec(vec![1,1]).pow(5); 
-        assert_eq!(p2.eval(1), 32);
+        let p1 = Polynomial::from_vec(vec![1,1]).pow(5); 
+        assert_eq!(p1.eval(1), 32);
     }
 
+    #[test]
+    fn ddx_1() {
+        let p1 = Polynomial::from_vec(vec![0]); 
+        assert_eq!(p1.ddx(), Polynomial::from_vec(vec![0]));
+    }
+
+    #[test]
+    fn ddx_2() {
+        let p1 = Polynomial::from_vec(vec![1,2,3,4,5]); 
+        assert_eq!(p1.ddx(), Polynomial::from_vec(vec![2,6,12,20]));
+    }
 
 
 }
