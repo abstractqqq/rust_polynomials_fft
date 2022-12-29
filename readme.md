@@ -2,6 +2,14 @@
 
 A learning project in which I defined a polynomial struct and implemented FFT for polynomial multiplication, with everything written in Rust.
 
+# FFT Multiplication vs. Regular Polynomial Multiplication
+
+x axis is degree, and y axis is in ms. 
+
+![test results](/pic/fft_perf.png)
+
+It is clear that, apart from the random spikes, the blue line follows a O(n^2) trend, while the red line is O(nlog(n)). The reason for the "step-function" look is that we have to zero-fill polynomials so that the degree is a power of 2 in FFT. 
+
 # Retro
 
 This is my summary of things I did in this project.
@@ -14,6 +22,7 @@ This is my summary of things I did in this project.
 
 2. Rust
     - Unit testing.
+    - Polars basic in Rust.
     - Use of trait bounds to make general polynomials.
     - Other Rust syntax and concepts.
     - Getting more familiar with ndarray.
