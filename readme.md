@@ -2,7 +2,7 @@
 
 A learning project in which I defined a polynomial struct and implemented FFT for polynomial multiplication, with everything written in Rust.
 
-# FFT Multiplication vs. Regular Polynomial Multiplication
+## FFT Multiplication vs. Regular Polynomial Multiplication
 
 x axis is degree, and y axis is in ms. Performance will differ depending on the specs of each machine.
 
@@ -16,7 +16,7 @@ x axis is degree, and y axis is in ms. Performance will differ depending on the 
 
 It is clear that, apart from the random spikes, the regular polynomial multiplication follows a O(n^2) trend, while FFT multiplication is O(nlog(n)). The reason for the "step-function" look is that we have to zero-fill polynomials so that the degree is a power of 2 in FFT. 2-threaded version is consistently faster than single-threaded FFT, with the exception of very small degs.
 
-# Retro
+## Retro
 
 This is my summary of things I did in this project.
 
@@ -34,7 +34,7 @@ This is my summary of things I did in this project.
     - Getting more familiar with ndarray.
     - Using scoped threads to further speed up the code.
     
-# Implementation Details
+## Implementation Details
 
 1. Polynomials\<T\>, polynomials over T, where T: Num + Clone + Copy + Display
     - T is like a mathematical field.
@@ -43,7 +43,7 @@ This is my summary of things I did in this project.
 
 2. Implemented plus, minus, multiply, divide_by (long division) for polynomials, and you may use p1 + p2, p1 - p2, and p1 * p2.
 
-3. The normal multiply method on the Polynomial struct uses the O(n^2) way. FFT for multiplication follows the [Cooley–Tukey FFT algorithm.](https://en.wikipedia.org/wiki/Cooley%E2%80%93Tukey_FFT_algorithm). FFT is  implemented for Polynomial\<f64\>. It can be extended to Polynomial\<Complex64\> easily. If one wants to extend this to other more general fields, one has to define more complicated structures and define n-th roots of unity in those fields (e.g. Finite fields, etc...), which is very beyond this project.
+3. The normal multiply method on the Polynomial struct uses the O(n^2) way. FFT for multiplication follows the [Cooley–Tukey FFT algorithm](https://en.wikipedia.org/wiki/Cooley%E2%80%93Tukey_FFT_algorithm). FFT is  implemented for Polynomial\<f64\>. It can be extended to Polynomial\<Complex64\> easily. If one wants to extend this to other more general fields, one has to define more complicated structures and define n-th roots of unity in those fields (e.g. Finite fields, etc...), which is very beyond this project.
 
 5. FFT has float point precision issues, so I rounded everything to 5 decimal places. You may change the decimal places.
 
@@ -55,7 +55,7 @@ This is my summary of things I did in this project.
 
 9. cargo run -r 5000
 
-# Resources:
+## Resources:
 
 1. [Learning FFT](https://www.youtube.com/watch?v=h7apO7q16V0&t=1265s)
 2. [FFT Lecture Notes](http://www.cs.toronto.edu/~denisp/csc373/docs/tutorial3-adv-writeup.pdf)
