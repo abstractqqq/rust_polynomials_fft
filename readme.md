@@ -4,11 +4,17 @@ A learning project in which I defined a polynomial struct and implemented FFT fo
 
 # FFT Multiplication vs. Regular Polynomial Multiplication
 
-x axis is degree, and y axis is in ms. 
+x axis is degree, and y axis is in ms. Performance will differ depending on the specs of each machine.
+
+1. Results on my Linux Laptop.
 
 ![test results](/pic/fft_perf.png)
 
-It is clear that, apart from the random spikes, the blue line follows a O(n^2) trend, while the red line is O(nlog(n)). The reason for the "step-function" look is that we have to zero-fill polynomials so that the degree is a power of 2 in FFT. 
+2. Results on my Windows desktop.
+
+![test results2](/pic/fft_perf_2.png)
+
+It is clear that, apart from the random spikes, the regular polynomial multiplication follows a O(n^2) trend, while FFT multiplication is O(nlog(n)). The reason for the "step-function" look is that we have to zero-fill polynomials so that the degree is a power of 2 in FFT. 2-threaded version is consistently faster than single-threaded FFT, with the exception of very small degs.
 
 # Retro
 
@@ -26,6 +32,7 @@ This is my summary of things I did in this project.
     - Use of trait bounds to make general polynomials.
     - Other Rust syntax and concepts.
     - Getting more familiar with ndarray.
+    - Using scoped threads to further speed up the code.
     
 # Implementation Details
 
@@ -43,6 +50,10 @@ This is my summary of things I did in this project.
 6. Formal derivative of a polynomial is implemented using same logic as the pow function. It might seem stupid to do this, but how can we properly cast usize into T? Formal derivative of a polynomial can be quite general, and T may not even be real or complex.
 
 7. It is built for fun and I am not aiming for the utmost speed, as this is more of a learning project.
+
+8. Depending on your machine, some tests might fail due to numerical errors, e.g. 0.9999999 != 1.0
+
+9. cargo run -r 5000
 
 # Resources:
 

@@ -1,21 +1,20 @@
 mod polynomial;
 use polynomial::Polynomial;
 use polars::prelude::*;
-//use polars_io::prelude::*;
 use std::env;
 use std::time::Instant;
 
 fn run_performance_test(runs:usize) -> Result<DataFrame, PolarsError> {
     let mut regular_mul:Vec<f64> = Vec::with_capacity(runs);
     let mut fft_mul:Vec<f64> = Vec::with_capacity(runs);
+    let mut fft_mul_threaded:Vec<f64> = Vec::with_capacity(runs);
 
     for i in 10..(runs+10) {
         let p1 = Polynomial::const_coef(3., i);
         let p2 = Polynomial::const_coef(5., i);
         let now = Instant::now();
         let _result = p1.multiply(&p2);
-        let elapsed = now.elapsed().as_secs_f64();
-        regular_mul.push(elapsed)
+        regular_mul.push(now.elapsed().as_secs_f64())
     }
 
     for i in 10..(runs+10) {
@@ -23,14 +22,22 @@ fn run_performance_test(runs:usize) -> Result<DataFrame, PolarsError> {
         let p2 = Polynomial::const_coef(5., i);
         let now = Instant::now();
         let _result = p1.fft_mul(&p2, 10);
-        let elapsed = now.elapsed().as_secs_f64();
-        fft_mul.push(elapsed)
+        fft_mul.push(now.elapsed().as_secs_f64())
+    }
+
+    for i in 10..(runs+10) {
+        let p1 = Polynomial::const_coef(3., i);
+        let p2 = Polynomial::const_coef(5., i);
+        let now = Instant::now();
+        let _result = p1.fft_mul_threaded(&p2, 10);
+        fft_mul_threaded.push(now.elapsed().as_secs_f64())
     }
 
     let regular = Series::from_vec("regular", regular_mul);
     let fft = Series::from_vec("fft", fft_mul);
-    let df = DataFrame::new(vec![regular, fft]);
-    df 
+    let fft_threaded = Series::from_vec("fft_threaded", fft_mul_threaded);
+
+    DataFrame::new(vec![regular, fft, fft_threaded])
 }
 
 fn main() {
@@ -50,10 +57,10 @@ fn main() {
             if write_result.is_err() {
                 println!("Error happened when writing to csv.");
             }
-
         }
-        _ => {
-            println!("Some error occured during the test.");
+
+        Err(e) => {
+            println!("Some error occured during the test: {}", e);
         }
     }
 
@@ -168,7 +175,16 @@ mod test {
     fn test_fft_2() {
         let p1 = Polynomial::from_vec(vec![-1.,1.]).pow(4);
         let p2 = Polynomial::from_vec(vec![-1.,1.]); 
-        let fft = p1.fft_mul(&p2, 5);
+        let fft = p1.fft_mul(&p2, 10);
+        assert_eq!(p1.multiply(&p2), fft);
+        assert_eq!(p2.pow(5), fft);
+    }
+
+    #[test]
+    fn test_fft_3() {
+        let p1 = Polynomial::from_vec(vec![-1.,1.]).pow(4);
+        let p2 = Polynomial::from_vec(vec![-1.,1.]); 
+        let fft = p1.fft_mul_threaded(&p2, 10);
         assert_eq!(p1.multiply(&p2), fft);
         assert_eq!(p2.pow(5), fft);
     }
@@ -209,6 +225,5 @@ mod test {
         let p1 = Polynomial::from_vec(vec![1,2,3,4,5]); 
         assert_eq!(p1.ddx(), Polynomial::from_vec(vec![2,6,12,20]));
     }
-
 
 }

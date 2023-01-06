@@ -1,6 +1,7 @@
 use itertools::{EitherOrBoth::*, Itertools};
 use ndarray::{Array1, ArrayView1, s};
 use std::f64::consts::PI;
+use std::thread;
 use num_complex::*;
 use num_traits::{Num, Zero, One};
 use std::{cmp::PartialEq, fmt::Display, ops::{Add, Sub, Mul}};
@@ -465,9 +466,10 @@ impl Polynomial<f64> {
             y[j + n/2] = y_e[j] - odd_term;
             w *= w_n;
         }
-        return y
+
+        y
     }
-    
+
     fn inverse_fft(p:ArrayView1<Complex64>) -> Array1<Complex64> {
     
         let n = p.len();
@@ -489,9 +491,9 @@ impl Polynomial<f64> {
             y[j + n/2] = y_e[j] - odd_term;
             w *= w_n;
         }
-        return y
+        y
     }
-    
+
     fn smallest_pow_2(n:usize) -> usize {
         // smallest power of 2 that is >= n
         let mut test:usize = 1;
@@ -525,7 +527,7 @@ impl Polynomial<f64> {
         }
         // q.deg + p.deg + 1 = length of the output
         let target_len = Self::smallest_pow_2(q.deg() + self.deg() + 1);
-        // I could potentially launch two threads to do this part
+        // 
         let new_p = self.with_leading_zeros(target_len);
         let new_q = q.with_leading_zeros(target_len);
         // pointwise multiplication, then apply inverse
@@ -535,4 +537,32 @@ impl Polynomial<f64> {
         let rounding_factor = (10.).powi(decimal_places as i32);
         Polynomial::no_leading_zeros(new_coeff_array.map(|z| ((z.re()*rounding_factor).trunc())/rounding_factor).to_vec())
     }
+
+    pub fn fft_mul_threaded(&self, q:&Polynomial<f64>, decimal_places:usize) -> Polynomial<f64> {
+        if q.deg() == 0 || self.deg() == 0 {
+            return self.multiply(q)
+        }
+        // q.deg + p.deg + 1 = length of the output
+        let target_len = Self::smallest_pow_2(q.deg() + self.deg() + 1);
+        // 
+        let (fft_p, fft_q) = thread::scope(|s| {
+            let first = s.spawn(|| {
+                Self::fft(self.with_leading_zeros(target_len).view())
+            });
+
+            let second = s.spawn(|| {
+                Self::fft(q.with_leading_zeros(target_len).view())
+            });
+
+            (first.join().unwrap(), second.join().unwrap())
+        });
+        // pointwise multiplication, then apply inverse
+        let product_ptwise = fft_p * fft_q;
+        let new_coeff_array = Self::inverse_fft(product_ptwise.view())/(target_len as f64);
+        // extract real parts and return, round real parts to 5 decimals.
+        let rounding_factor = (10.).powi(decimal_places as i32);
+        Polynomial::no_leading_zeros(new_coeff_array.map(|z| ((z.re()*rounding_factor).trunc())/rounding_factor).to_vec())
+    }
+
+
 }
