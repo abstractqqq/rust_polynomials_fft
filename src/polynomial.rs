@@ -460,15 +460,16 @@ impl Polynomial<f64> {
         let y_o = Self::fft(odd);
         let mut y = Array1::from_elem(n, Complex64::zero());
         let mut w = Complex64::one();
-        for j in 0..(n/2) {
+        let half = n/2;
+        for j in 0..half {
             let odd_term = w * y_o[j];
             y[j] = y_e[j] + odd_term;
-            y[j + n/2] = y_e[j] - odd_term;
+            y[j + half] = y_e[j] - odd_term;
             w *= w_n;
         }
-
         y
     }
+
 
     fn inverse_fft(p:ArrayView1<Complex64>) -> Array1<Complex64> {
     
@@ -485,10 +486,11 @@ impl Polynomial<f64> {
         let y_o = Self::inverse_fft(odd);
         let mut y = Array1::from_elem(n, Complex64::zero());
         let mut w = Complex64::one();
-        for j in 0..(n/2) {
+        let half = n/2;
+        for j in 0..half {
             let odd_term = w * y_o[j];
             y[j] = y_e[j] + odd_term;
-            y[j + n/2] = y_e[j] - odd_term;
+            y[j + half] = y_e[j] - odd_term;
             w *= w_n;
         }
         y
@@ -522,11 +524,13 @@ impl Polynomial<f64> {
     /// 
     /// returns: product of self and q 
     pub fn fft_mul(&self, q:&Polynomial<f64>, decimal_places:usize) -> Polynomial<f64> {
-        if q.deg() == 0 || self.deg() == 0 {
+        let q_deg = q.deg();
+        let p_deg = self.deg();
+        if q_deg == 0 || p_deg == 0 {
             return self.multiply(q)
         }
         // q.deg + p.deg + 1 = length of the output
-        let target_len = Self::smallest_pow_2(q.deg() + self.deg() + 1);
+        let target_len = Self::smallest_pow_2(p_deg + q_deg + 1);
         // 
         let new_p = self.with_leading_zeros(target_len);
         let new_q = q.with_leading_zeros(target_len);
@@ -539,21 +543,17 @@ impl Polynomial<f64> {
     }
 
     pub fn fft_mul_threaded(&self, q:&Polynomial<f64>, decimal_places:usize) -> Polynomial<f64> {
-        if q.deg() == 0 || self.deg() == 0 {
+        let q_deg = q.deg();
+        let p_deg = self.deg();
+        if q_deg == 0 || p_deg == 0 {
             return self.multiply(q)
         }
         // q.deg + p.deg + 1 = length of the output
-        let target_len = Self::smallest_pow_2(q.deg() + self.deg() + 1);
+        let target_len = Self::smallest_pow_2(q_deg + p_deg + 1);
         // 
         let (fft_p, fft_q) = thread::scope(|s| {
-            let first = s.spawn(|| {
-                Self::fft(self.with_leading_zeros(target_len).view())
-            });
-
-            let second = s.spawn(|| {
-                Self::fft(q.with_leading_zeros(target_len).view())
-            });
-
+            let first = s.spawn(|| Self::fft(self.with_leading_zeros(target_len).view()));
+            let second = s.spawn(|| Self::fft(q.with_leading_zeros(target_len).view()));
             (first.join().unwrap(), second.join().unwrap())
         });
         // pointwise multiplication, then apply inverse
