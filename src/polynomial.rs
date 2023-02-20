@@ -18,10 +18,12 @@ pub struct Polynomial<T>
 impl <T> Polynomial<T> 
     where T: Num + Clone + Copy + Display
 {
+    #[inline]
     pub fn new(c: Array1<T>) -> Polynomial<T> {
         Polynomial::no_leading_zeros(c.to_vec())
     }
 
+    #[inline]
     pub fn from_vec(c: Vec<T>) -> Polynomial<T> {
         Polynomial::no_leading_zeros(c)
     }
@@ -46,6 +48,7 @@ impl <T> Polynomial<T>
         Polynomial{coeffs: Array1::from_vec(c)}
     }
 
+    #[inline]
     pub fn copy(&self) -> Polynomial<T> {
         Polynomial{coeffs: self.coeffs.clone()}
     }
@@ -77,18 +80,22 @@ impl <T> Polynomial<T>
         }
     }
 
+    #[inline]
     pub fn len(&self) -> usize {
         self.coeffs.len()
     }
 
+    #[inline]
     pub fn get_coeffs(&self) -> Array1<T> {
         self.coeffs.clone()
     }
 
+    #[inline]
     pub fn get_coeffs_view(&self) -> ArrayView1<T> {
         self.coeffs.view()
     }
 
+    #[inline]
     pub fn get_const(&self) -> &T {
         self.coeffs.get(0).unwrap()
     }
@@ -121,9 +128,9 @@ impl <T> Polynomial<T>
                 }
             }
         }
-
     }
 
+    #[inline]
     pub fn highest_coeff(&self) -> T {
         *self.coeffs.last().unwrap()
     }
@@ -144,6 +151,7 @@ impl <T> Polynomial<T>
 
     }
 
+    #[inline]
     pub fn minus(&self, p:&Polynomial<T>) -> Polynomial<T> {
         let p2 = Polynomial{coeffs: p.coeffs.iter().map(|x| T::zero()-*x).collect()};
         self.plus(&p2)
@@ -280,10 +288,12 @@ impl <T> Polynomial<T>
 impl <T> PartialEq for Polynomial<T> 
     where T: Num + Clone + Copy + Display
 {
+    #[inline]
     fn eq(&self, other: &Self) -> bool {
         self.coeffs == other.coeffs 
     }
 
+    #[inline]
     fn ne(&self, other: &Self) -> bool {
         self.coeffs != other.coeffs
      }
@@ -347,10 +357,12 @@ impl <T> Mul for &Polynomial<T>
 impl <T> Zero for Polynomial<T> 
     where T: Num + Clone + Copy + Display
 {
+    #[inline]
     fn zero() -> Self {
         Polynomial { coeffs: Array1::from_elem(1, T::zero())}
     }
 
+    #[inline]
     fn is_zero(&self) -> bool {
         self.coeffs == Array1::from_elem(1, T::zero())
     }
@@ -359,10 +371,12 @@ impl <T> Zero for Polynomial<T>
 impl <T> One for Polynomial<T> 
     where T: Num + Clone + Copy + Display
 {
+    #[inline]
     fn one() -> Self {
         Polynomial { coeffs: Array1::from_elem(1, T::one())}
     }
 
+    #[inline]
     fn is_one(&self) -> bool {
         self.coeffs == Array1::from_elem(1, T::one())
     }
@@ -442,6 +456,7 @@ impl <T> std::fmt::Display for Polynomial<T>
 // Only for real polynomials. Can be made slightly more general. But I will stop here.
 impl Polynomial<f64> {
 
+    #[inline]
     pub fn get_value_repr(&self) -> Array1<Complex64> {
         Self::fft(self.coeffs.view())
     }
@@ -552,8 +567,12 @@ impl Polynomial<f64> {
         let target_len = Self::smallest_pow_2(q_deg + p_deg + 1);
         // 
         let (fft_p, fft_q) = thread::scope(|s| {
-            let first = s.spawn(|| Self::fft(self.with_leading_zeros(target_len).view()));
-            let second = s.spawn(|| Self::fft(q.with_leading_zeros(target_len).view()));
+            let first = s.spawn(|| 
+                Self::fft(self.with_leading_zeros(target_len).view())
+            );
+            let second = s.spawn(|| 
+                Self::fft(q.with_leading_zeros(target_len).view())
+            );
             (first.join().unwrap(), second.join().unwrap())
         });
         // pointwise multiplication, then apply inverse

@@ -1,7 +1,6 @@
 mod polynomial;
 use polynomial::Polynomial;
 use polars::prelude::*;
-use std::env;
 use std::time::Instant;
 
 fn run_performance_test(runs:usize) -> Result<DataFrame, PolarsError> {
@@ -41,46 +40,58 @@ fn run_performance_test(runs:usize) -> Result<DataFrame, PolarsError> {
 }
 
 fn main() {
-    // Trying to see when will FFT be faster than regular multiplication.
-    let args: Vec<String> = env::args().collect();
-    let n = args[1].parse::<usize>().unwrap();
-    let result = run_performance_test(n);
-    match result {
-        Ok(mut df) => {
-            use std::fs::File;
-            println!("Finished measuring runtime. Saving...");
-            let mut file = File::create("test_results.csv").expect("Could not create file");
-            let write_result = CsvWriter::new(&mut file)
-                                                        .has_header(true)
-                                                        .with_delimiter(b',')
-                                                        .finish(&mut df);
-            if write_result.is_err() {
-                println!("Error happened when writing to csv.");
-            }
-        }
+    // // Trying to see when will FFT be faster than regular multiplication.
+    // let args: Vec<String> = env::args().collect();
+    // let n = args[1].parse::<usize>().unwrap();
+    // let result = run_performance_test(n);
+    // match result {
+    //     Ok(mut df) => {
+    //         use std::fs::File;
+    //         println!("Finished measuring runtime. Saving...");
+    //         let mut file = File::create("test_results.csv").expect("Could not create file");
+    //         let write_result = CsvWriter::new(&mut file)
+    //                                                     .has_header(true)
+    //                                                     .with_delimiter(b',')
+    //                                                     .finish(&mut df);
+    //         if write_result.is_err() {
+    //             println!("Error happened when writing to csv.");
+    //         }
+    //     }
 
-        Err(e) => {
-            println!("Some error occured during the test: {}", e);
-        }
-    }
+    //     Err(e) => {
+    //         println!("Some error occured during the test: {}", e);
+    //     }
+    // }
 
 
-    // let p1 = Polynomial::from_vec(vec![1,2,3]);
-    // let p2 = Polynomial::from_vec(vec![0,0,2]);
-    // let (quotient, remainder) = p1.divide_by(&p2).unwrap();
-    // println!("Dividing {} by {}.", p1, p2);
-    // println!("The quotient is {},",quotient);
-    // println!("The remainder is {}.", remainder);
-    // println!("Hence {} = ({}) * ({}) + {}.\n\n", p1, quotient, p2, remainder);
+    let p1 = Polynomial::from_vec(vec![1,2,3]);
+    let p2 = Polynomial::from_vec(vec![0,0,2]);
+    let (quotient, remainder) = p1.divide_by(&p2).unwrap();
+    println!("Dividing {} by {}.", p1, p2);
+    println!("The quotient is {},",quotient);
+    println!("The remainder is {}.", remainder);
+    println!("Hence {} = ({}) * ({}) + {}.\n\n", p1, quotient, p2, remainder);
+
     
-    // let q1 = Polynomial::from_vec(vec![-1.,1.]);
-    // let q2 = Polynomial::from_vec(vec![1.,1.,1.,1.,1.,1.,1.]);
-    // println!("Multiplying {} by {}.", q1, q2);
-    // println!("The result is {}.\n",q1.fft_mul(&q2, 5)); // compute product using FFT, and keep 5 decimal places.
+    let q1 = Polynomial::from_vec(vec![-1.,1.]);
+    let q2 = Polynomial::from_vec(vec![1.,1.,1.,1.,1.,1.,1.]);
+    println!("Multiplying {} by {}.", q1, q2);
+    println!("The result is {}.\n",q1.fft_mul(&q2, 5)); // compute product using FFT, and keep 5 decimal places.
 
-    // let r1 = Polynomial::from_vec(vec![1,2,3,4,5]); 
-    // println!("The derivative of {} is:", r1);
-    // println!("{}", r1.ddx());
+    let q3 = q1.multiply(&q2);
+    let (quotient2, remainder2) = q3.divide_by(&q1).unwrap();
+    println!("Dividing {} by {}.", q3, q1);
+    println!("The quotient is {},",quotient2);
+    println!("The remainder is {}.", remainder2);
+    println!("Hence {} = ({}) * ({}) + {}.\n\n", q3, quotient2, q1, remainder2);
+    
+    let r1 = Polynomial::from_vec(vec![1,2,3,4,5]); 
+    println!("The derivative of {} is:", r1);
+    println!("{}", r1.ddx());
+
+    let r2 = Polynomial::from_vec(vec![1.,1.,1.,1.,1.]); 
+    println!("The derivative of {} is:", r2);
+    println!("{}", r2.ddx());
 
 }
 

@@ -60,3 +60,5 @@ This is my summary of things I did in this project.
 1. [Learning FFT](https://www.youtube.com/watch?v=h7apO7q16V0&t=1265s)
 2. [FFT Lecture Notes](http://www.cs.toronto.edu/~denisp/csc373/docs/tutorial3-adv-writeup.pdf)
 3. Documentation of ndarray, num_traits, etc.
+4. [Medium article](https://medium.com/@aiswaryamathur/understanding-fast-fourier-transform-from-scratch-to-solve-polynomial-multiplication-8018d511162f)
+5. [More detailed explanation](https://math.stackexchange.com/questions/764727/concrete-fft-polynomial-multiplication-example)
